@@ -8,6 +8,7 @@ import backtype.storm.topology.TopologyBuilder;
 import com.guilin.storm.study.bolt.PrintBolt;
 import kafka.api.OffsetRequest;
 import org.apache.log4j.PropertyConfigurator;
+import org.slf4j.LoggerFactory;
 import storm.kafka.*;
 
 import java.util.ArrayList;
@@ -16,17 +17,18 @@ import java.util.List;
 /**
  * Created by dongguilin on 2017/8/20.
  */
-public class SimpleTopo {
+public class LagOffsetSimpleTopo {
 
     public static void main(String[] args) {
         String topic = "guilin-topic31";
-        System.setProperty("rootpath", "logs/" + topic + "/latestTime1");
-        String path = SimpleTopo.class.getClassLoader().getResource("log4j-simple.properties").getPath();
+        System.setProperty("rootpath", "logs/" + topic + "/latestTime1/lag");
+        String path = SimpleTopo.class.getClassLoader().getResource("log4j-lagoffset.properties").getPath();
         PropertyConfigurator.configure(path);
         int topology_workers = 2;
         int spoutTask = 2;
         int printBoltTask = 2;
-        String brokerZkPath = "/offset";
+        String brokerZkPath = "/lagoffset/offset";
+
 
         Config config = new Config();
         config.put(Config.TOPOLOGY_DEBUG, true);
@@ -48,8 +50,7 @@ public class SimpleTopo {
         spoutConfig.scheme = new SchemeAsMultiScheme(new StringScheme());
         spoutConfig.useStartOffsetTimeIfOffsetOutOfRange = true;
         spoutConfig.startOffsetTime = OffsetRequest.LatestTime();
-//        spoutConfig.startOffsetTime = OffsetRequest.EarliestTime();
-        spoutConfig.consumeRangeOffsetSpout = false;
+        spoutConfig.consumeRangeOffsetSpout = true;
 
         List<String> list = new ArrayList<>();
         list.add("ubuntu");
@@ -59,9 +60,8 @@ public class SimpleTopo {
         TopologyBuilder builder = new TopologyBuilder();
         builder.setSpout("KafkaSpout", new KafkaSpout(spoutConfig), spoutTask);
         builder.setBolt("printBolt", new PrintBolt(), printBoltTask).shuffleGrouping("KafkaSpout");
-//        builder.setBolt("bolt", new SequenceBolt()).shuffleGrouping("spout");
 
         LocalCluster cluster = new LocalCluster();
-        cluster.submitTopology("SimpleTopo", config, builder.createTopology());
+        cluster.submitTopology("SimpleTopo-lagoffset", config, builder.createTopology());
     }
 }
